@@ -1,7 +1,7 @@
-module Plain.Conversion where
+module Plain1.Conversion where
 
-import AExpr
 import Expr
+import Plain1.AExpr
 import Data.Text (Text)
 
 genNewVar :: Text
@@ -11,25 +11,25 @@ conv :: Expr -> AExpr
 conv expr =
   case expr of
     EVar var ->
-         AAtom (AVar var)
+        AComp (CAtom (AVar var))
     EInt int ->
-        AAtom (AInt int)
+        AComp (CAtom (AInt int))
     ELam bound body ->
-        AAtom (ALam bound (conv body))
+        AComp (CAtom (ALam bound (conv body)))
     EApp fun arg ->
         convAppFun (conv fun) arg
     EAdd lhs rhs ->
         convAddLhs (conv lhs) rhs
     ELet bound rhs body ->
-        undefined
+        convLetRhs bound body (conv rhs)
     EIf test thenBody elseBody ->
-        undefined
+        convIfTest thenBody elseBody (conv test)
 
 convAppFun :: AExpr -> Expr -> AExpr
 convAppFun aFun arg =
   case aFun of
-    AAtom funAtom ->
-      convAppArg funAtom (conv arg)
+    AComp (CAtom atomFun) ->
+      convAppArg atomFun (conv arg)
     AComp comp ->
       let var = genNewVar
       in  ALet var comp (convAppArg (AVar var) (conv arg))
@@ -44,8 +44,8 @@ convAppFun aFun arg =
 convAppArg :: Atom -> AExpr -> AExpr
 convAppArg funAtom aarg =
   case aarg of
-    AAtom argAtom ->
-      AComp (CApp funAtom argAtom)
+    AComp (CAtom atomFun) ->
+      AComp (CApp funAtom atomFun)
     AComp comp ->
       let var = genNewVar
       in  ALet var comp (AComp (CApp funAtom (AVar var)))
@@ -60,7 +60,7 @@ convAppArg funAtom aarg =
 convAddLhs :: AExpr -> Expr -> AExpr
 convAddLhs aLhs rhs =
   case aLhs of
-    AAtom lhsAtom ->
+    AComp (CAtom lhsAtom) ->
       convAddRhs lhsAtom (conv rhs)
     AComp comp ->
       let var = genNewVar
@@ -76,7 +76,7 @@ convAddLhs aLhs rhs =
 convAddRhs :: Atom -> AExpr -> AExpr
 convAddRhs atomLhs aRhs =
   case aRhs of
-    AAtom rhsAtom ->
+    AComp (CAtom rhsAtom) ->
       AComp (CAdd atomLhs rhsAtom)
     AComp comp ->
       let var = genNewVar
@@ -88,3 +88,32 @@ convAddRhs atomLhs aRhs =
       AIf test
         (convAddRhs atomLhs thenBody)
         (convAddRhs atomLhs elseBody)
+
+convLetRhs :: Text -> Expr -> AExpr -> AExpr
+convLetRhs bound body aRhs =
+  case aRhs of
+    AComp comp ->
+      ALet bound comp (conv body)
+    ALet bound' rhs' body' ->
+      ALet bound' rhs'
+        (convLetRhs bound body body')
+    AIf test thenBody elseBody ->
+      AIf test
+        (convLetRhs bound body thenBody)
+        (convLetRhs bound body elseBody)
+
+convIfTest :: Expr -> Expr -> AExpr -> AExpr
+convIfTest thenBody elseBody aTest =
+  case aTest of
+    AComp (CAtom test) ->
+      AIf test (conv thenBody) (conv elseBody)
+    AComp comp ->
+      let var = genNewVar
+      in  ALet var comp (AIf (AVar var) (conv thenBody) (conv elseBody))
+    ALet bound rhs body ->
+      ALet bound rhs
+        (convIfTest thenBody elseBody body)
+    AIf test thenBody' elseBody' ->
+      AIf test
+        (convIfTest thenBody elseBody thenBody')
+        (convIfTest thenBody elseBody elseBody')

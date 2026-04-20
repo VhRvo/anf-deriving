@@ -64,8 +64,8 @@ library
     -- Modules included in this library but not exported.
     other-modules:
         Expr
-      , AExpr
-      , Plain.Conversion
+      , Plain1.AExpr
+      , Plain1.Conversion
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

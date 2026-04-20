@@ -1,4 +1,4 @@
-module AExpr where
+module Plain1.AExpr where
 
 import Data.Text (Text)
 
@@ -9,13 +9,13 @@ data Atom
     deriving (Show, Eq)
 
 data Comp
-    = CApp Atom Atom
+    = CAtom Atom
+    | CApp Atom Atom
     | CAdd Atom Atom
     deriving (Show, Eq)
 
 data AExpr
-    = AAtom Atom
-    | AComp Comp
+    = AComp Comp
     | ALet Text Comp AExpr
     | AIf Atom AExpr AExpr
     deriving (Show, Eq)
