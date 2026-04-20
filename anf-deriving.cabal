@@ -66,6 +66,7 @@ library
         Expr
       , Plain1.AExpr
       , Plain1.Conversion
+      , Plain1.Monad.Conversion
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -73,6 +74,7 @@ library
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.18.3.0
+      , mtl
       , text
 
     -- Directories containing source files.
