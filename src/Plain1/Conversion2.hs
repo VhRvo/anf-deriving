@@ -1,0 +1,88 @@
+module Plain1.Conversion2 where
+
+import Data.Text (Text)
+import Expr
+import Plain1.AExpr
+
+genFreshName :: Text
+genFreshName = undefined
+
+conv :: Expr -> AExpr
+conv expr =
+  case expr of
+    EVar var ->
+      AComp (CAtom (AVar var))
+    EInt int ->
+      AComp (CAtom (AInt int))
+    ELam bound body ->
+      AComp (CAtom (ALam bound (conv body)))
+    EApp funExpr argExpr ->
+      applyFrame (FrameAppFun argExpr) (conv funExpr)
+    EAdd lhsExpr rhsExpr ->
+      applyFrame (FrameAddLhs rhsExpr) (conv lhsExpr)
+    ELet bound rhsExpr bodyExpr ->
+      applyFrame (FrameLet bound bodyExpr) (conv rhsExpr)
+    EIf testExpr thenExpr elseExpr ->
+      applyFrame (FrameIfTest thenExpr elseExpr) (conv testExpr)
+
+data Frame
+  = FrameAppFun Expr
+  | FrameAppArg Atom
+  | FrameAddLhs Expr
+  | FrameAddRhs Atom
+  | FrameLet Text Expr
+  | FrameIfTest Expr Expr
+
+applyFrame :: Frame -> AExpr -> AExpr
+applyFrame frame aExpr =
+  case aExpr of
+    AComp (CAtom atom) ->
+      applyFrameToAtom frame atom
+    AComp comp ->
+      applyFrameToComp frame comp
+    ALet bound comp bodyAExpr ->
+      ALet bound comp (applyFrame frame bodyAExpr)
+    AIf testAtom thenAExpr elseAExpr ->
+      AIf testAtom (applyFrame frame thenAExpr) (applyFrame frame elseAExpr)
+
+applyFrameToAtom :: Frame -> Atom -> AExpr
+applyFrameToAtom frame atom =
+  case frame of
+    FrameAppFun argExpr ->
+      applyFrame (FrameAppArg atom) (conv argExpr)
+    FrameAppArg funAtom ->
+      AComp (CApp funAtom atom)
+    FrameAddLhs rhsExpr ->
+      applyFrame (FrameAddRhs atom) (conv rhsExpr)
+    FrameAddRhs lhsAtom ->
+      AComp (CAdd lhsAtom atom)
+    FrameLet bound bodyExpr ->
+      ALet bound (CAtom atom) (conv bodyExpr)
+    FrameIfTest thenExpr elseExpr ->
+      AIf atom (conv thenExpr) (conv elseExpr)
+
+applyFrameToComp :: Frame -> Comp -> AExpr
+applyFrameToComp frame comp =
+  case frame of
+    FrameAppFun argExpr ->
+      reifyComp comp $ \funAtom ->
+        applyFrame (FrameAppArg funAtom) (conv argExpr)
+    FrameAppArg funAtom ->
+      reifyComp comp $ \argAtom ->
+        AComp (CApp funAtom argAtom)
+    FrameAddLhs rhsExpr ->
+      reifyComp comp $ \lhsAtom ->
+        applyFrame (FrameAddRhs lhsAtom) (conv rhsExpr)
+    FrameAddRhs lhsAtom ->
+      reifyComp comp $ \rhsAtom ->
+        AComp (CAdd lhsAtom rhsAtom)
+    FrameLet bound bodyExpr ->
+      ALet bound comp (conv bodyExpr)
+    FrameIfTest thenExpr elseExpr ->
+      reifyComp comp $ \testAtom ->
+        AIf testAtom (conv thenExpr) (conv elseExpr)
+
+reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
+reifyComp comp build =
+  let freshName = genFreshName
+  in  ALet freshName comp (build (AVar freshName))

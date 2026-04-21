@@ -66,6 +66,8 @@ library
         Expr
       , Plain1.AExpr
       , Plain1.Conversion
+      , Plain1.Conversion1
+      , Plain1.Conversion2
       , Plain1.Monad.Conversion
 
     -- LANGUAGE extensions used by modules in this package.
