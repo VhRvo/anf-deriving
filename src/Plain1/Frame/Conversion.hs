@@ -11,11 +11,11 @@ conv :: Expr -> AExpr
 conv expr =
   case expr of
     EVar var ->
-      applyFrame FrameId (AComp (CAtom (AVar var)))
+      AComp (CAtom (AVar var))
     EInt int ->
-      applyFrame FrameId (AComp (CAtom (AInt int)))
+      AComp (CAtom (AInt int))
     ELam bound body ->
-      applyFrame FrameId (AComp (CAtom (ALam bound (conv body))))
+      AComp (CAtom (ALam bound (conv body)))
     EApp funExpr argExpr ->
       applyFrame (FrameAppFun argExpr) (conv funExpr)
     EAdd lhsExpr rhsExpr ->
@@ -28,8 +28,7 @@ conv expr =
 -- Frame records one layer of surrounding work that is waiting for the current
 -- subexpression to produce a result.
 data Frame
-  = FrameId
-  | FrameAppFun Expr
+  = FrameAppFun Expr
   | FrameAppArg Atom
   | FrameAddLhs Expr
   | FrameAddRhs Atom
@@ -53,8 +52,6 @@ applyFrame frame aExpr =
 applyFrameToAtom :: Frame -> Atom -> AExpr
 applyFrameToAtom frame atom =
   case frame of
-    FrameId ->
-      AComp (CAtom atom)
     FrameAppFun argExpr ->
       applyFrame (FrameAppArg atom) (conv argExpr)
     FrameAppArg funAtom ->
@@ -71,8 +68,6 @@ applyFrameToAtom frame atom =
 applyFrameToComp :: Frame -> Comp -> AExpr
 applyFrameToComp frame comp =
   case frame of
-    FrameId ->
-      AComp comp
     FrameAppFun argExpr ->
       reifyComp comp $ \funAtom ->
         applyFrame (FrameAppArg funAtom) (conv argExpr)

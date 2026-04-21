@@ -4,6 +4,10 @@ import Data.Text (Text)
 import Expr
 import Plain1.AExpr
 
+-- This module keeps the direct helper-by-helper presentation of the
+-- conversion. Plain1.Context.Conversion preserves the same control flow by
+-- turning each "what to do next" helper entry into an explicit context frame.
+
 genFreshName :: Text
 genFreshName = undefined
 
