@@ -40,30 +40,12 @@ data Frame
 applyFrame :: Frame -> AExpr -> AExpr
 applyFrame frame aExpr =
   case aExpr of
-    AComp (CAtom atom) ->
-      applyFrameToAtom frame atom
     AComp comp ->
       applyFrameToComp frame comp
     ALet bound comp bodyAExpr ->
       ALet bound comp (applyFrame frame bodyAExpr)
     AIf testAtom thenAExpr elseAExpr ->
       AIf testAtom (applyFrame frame thenAExpr) (applyFrame frame elseAExpr)
-
-applyFrameToAtom :: Frame -> Atom -> AExpr
-applyFrameToAtom frame atom =
-  case frame of
-    FrameAppFun argExpr ->
-      applyFrame (FrameAppArg atom) (conv argExpr)
-    FrameAppArg funAtom ->
-      AComp (CApp funAtom atom)
-    FrameAddLhs rhsExpr ->
-      applyFrame (FrameAddRhs atom) (conv rhsExpr)
-    FrameAddRhs lhsAtom ->
-      AComp (CAdd lhsAtom atom)
-    FrameLet bound bodyExpr ->
-      ALet bound (CAtom atom) (conv bodyExpr)
-    FrameIfTest thenExpr elseExpr ->
-      AIf atom (conv thenExpr) (conv elseExpr)
 
 applyFrameToComp :: Frame -> Comp -> AExpr
 applyFrameToComp frame comp =
@@ -89,6 +71,8 @@ applyFrameToComp frame comp =
 -- Reify a comp as an atom by let-binding it to a fresh name before handing
 -- that atom to the surrounding builder.
 reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
+reifyComp (CAtom atom) build =
+  build atom
 reifyComp comp build =
   let freshName = genFreshName
    in ALet freshName comp (build (AVar freshName))

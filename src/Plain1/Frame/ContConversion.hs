@@ -52,7 +52,6 @@ applyFrame frame aExpr =
     AIf testAtom thenAExpr elseAExpr ->
       AIf testAtom (applyFrame frame thenAExpr) (applyFrame frame elseAExpr)
 
-
 applyFrameToComp :: Frame -> Comp -> AExpr
 applyFrameToComp frame comp =
   case frame of
