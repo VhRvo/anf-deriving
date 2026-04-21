@@ -96,4 +96,4 @@ applyFrameToComp frame comp =
 reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
 reifyComp comp build =
   let freshName = genFreshName
-  in  ALet freshName comp (build (AVar freshName))
+   in ALet freshName comp (build (AVar freshName))
