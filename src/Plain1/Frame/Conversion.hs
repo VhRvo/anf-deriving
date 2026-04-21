@@ -1,4 +1,4 @@
-module Plain1.Conversion2 where
+module Plain1.Frame.Conversion where
 
 import Data.Text (Text)
 import Expr
@@ -25,6 +25,8 @@ conv expr =
     EIf testExpr thenExpr elseExpr ->
       applyFrame (FrameIfTest thenExpr elseExpr) (conv testExpr)
 
+-- Frame records one layer of surrounding work that is waiting for the current
+-- subexpression to produce a result.
 data Frame
   = FrameAppFun Expr
   | FrameAppArg Atom
@@ -33,6 +35,8 @@ data Frame
   | FrameLet Text Expr
   | FrameIfTest Expr Expr
 
+-- Push a frame through ALet/AIf until it reaches a result that the frame can
+-- consume directly.
 applyFrame :: Frame -> AExpr -> AExpr
 applyFrame frame aExpr =
   case aExpr of
@@ -82,6 +86,8 @@ applyFrameToComp frame comp =
       reifyComp comp $ \testAtom ->
         AIf testAtom (conv thenExpr) (conv elseExpr)
 
+-- Reify a comp as an atom by let-binding it to a fresh name before handing
+-- that atom to the surrounding builder.
 reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
 reifyComp comp build =
   let freshName = genFreshName
