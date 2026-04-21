@@ -4,8 +4,8 @@ import Expr
 import Plain1.AExpr
 import Data.Text (Text)
 
-genNewVar :: Text
-genNewVar = undefined
+genFreshName :: Text
+genFreshName = undefined
 
 conv :: Expr -> AExpr
 conv expr =
@@ -26,31 +26,31 @@ conv expr =
         convIfTest thenBody elseBody (conv test)
 
 convAppFun :: Expr -> AExpr -> AExpr
-convAppFun arg aFun =
-  case aFun of
-    AComp (CAtom atomFun) ->
-      convAppArg atomFun (conv arg)
+convAppFun argExpr funAExpr =
+  case funAExpr of
+    AComp (CAtom funAtom) ->
+      convAppArg funAtom (conv argExpr)
     AComp comp ->
-      let var = genNewVar
-      in  ALet var comp (convAppArg (AVar var) (conv arg))
+      let freshName = genFreshName
+      in  ALet freshName comp (convAppArg (AVar freshName) (conv argExpr))
     ALet bound comp body ->
       ALet bound comp
-        (convAppFun arg body)
+        (convAppFun argExpr body)
     AIf test thenBody elseBody ->
       AIf test
-        (convAppFun arg thenBody)
-        (convAppFun arg elseBody)
+        (convAppFun argExpr thenBody)
+        (convAppFun argExpr elseBody)
 
 convAppArg :: Atom -> AExpr -> AExpr
-convAppArg funAtom aArg =
-  case aArg of
-    AComp (CAtom atomFun) ->
-      AComp (CApp funAtom atomFun)
+convAppArg funAtom argAExpr =
+  case argAExpr of
+    AComp (CAtom argAtom) ->
+      AComp (CApp funAtom argAtom)
     AComp comp ->
-      let var = genNewVar
-      in  ALet var comp (AComp (CApp funAtom (AVar var)))
-    ALet var comp body ->
-      ALet var comp
+      let freshName = genFreshName
+      in  ALet freshName comp (AComp (CApp funAtom (AVar freshName)))
+    ALet freshName comp body ->
+      ALet freshName comp
         (convAppArg funAtom body)
     AIf test thenBody elseBody ->
       AIf test
@@ -58,62 +58,62 @@ convAppArg funAtom aArg =
         (convAppArg funAtom elseBody)
 
 convAddLhs :: Expr -> AExpr -> AExpr
-convAddLhs rhs aLhs =
-  case aLhs of
+convAddLhs rhsExpr lhsAExpr =
+  case lhsAExpr of
     AComp (CAtom lhsAtom) ->
-      convAddRhs lhsAtom (conv rhs)
+      convAddRhs lhsAtom (conv rhsExpr)
     AComp comp ->
-      let var = genNewVar
-      in  ALet var comp (convAddRhs (AVar var) (conv rhs))
+      let freshName = genFreshName
+      in  ALet freshName comp (convAddRhs (AVar freshName) (conv rhsExpr))
     ALet bound comp body ->
       ALet bound comp
-        (convAddLhs rhs body)
+        (convAddLhs rhsExpr body)
     AIf test thenBody elseBody ->
       AIf test
-        (convAddLhs rhs thenBody)
-        (convAddLhs rhs elseBody)
+        (convAddLhs rhsExpr thenBody)
+        (convAddLhs rhsExpr elseBody)
 
 convAddRhs :: Atom -> AExpr -> AExpr
-convAddRhs atomLhs aRhs =
-  case aRhs of
+convAddRhs lhsAtom rhsAExpr =
+  case rhsAExpr of
     AComp (CAtom rhsAtom) ->
-      AComp (CAdd atomLhs rhsAtom)
+      AComp (CAdd lhsAtom rhsAtom)
     AComp comp ->
-      let var = genNewVar
-      in  ALet var comp (AComp (CAdd atomLhs (AVar var)))
+      let freshName = genFreshName
+      in  ALet freshName comp (AComp (CAdd lhsAtom (AVar freshName)))
     ALet bound comp body ->
       ALet bound comp
-        (convAddRhs atomLhs body)
+        (convAddRhs lhsAtom body)
     AIf test thenBody elseBody ->
       AIf test
-        (convAddRhs atomLhs thenBody)
-        (convAddRhs atomLhs elseBody)
+        (convAddRhs lhsAtom thenBody)
+        (convAddRhs lhsAtom elseBody)
 
 convLetRhs :: Text -> Expr -> AExpr -> AExpr
-convLetRhs bound body aRhs =
-  case aRhs of
+convLetRhs bound bodyExpr rhsAExpr =
+  case rhsAExpr of
     AComp comp ->
-      ALet bound comp (conv body)
+      ALet bound comp (conv bodyExpr)
     ALet bound' rhs' body' ->
       ALet bound' rhs'
-        (convLetRhs bound body body')
+        (convLetRhs bound bodyExpr body')
     AIf test thenBody elseBody ->
       AIf test
-        (convLetRhs bound body thenBody)
-        (convLetRhs bound body elseBody)
+        (convLetRhs bound bodyExpr thenBody)
+        (convLetRhs bound bodyExpr elseBody)
 
 convIfTest :: Expr -> Expr -> AExpr -> AExpr
-convIfTest thenBody elseBody aTest =
-  case aTest of
-    AComp (CAtom test) ->
-      AIf test (conv thenBody) (conv elseBody)
+convIfTest thenExpr elseExpr testAExpr =
+  case testAExpr of
+    AComp (CAtom testAtom) ->
+      AIf testAtom (conv thenExpr) (conv elseExpr)
     AComp comp ->
-      let var = genNewVar
-      in  ALet var comp (AIf (AVar var) (conv thenBody) (conv elseBody))
+      let freshName = genFreshName
+      in  ALet freshName comp (AIf (AVar freshName) (conv thenExpr) (conv elseExpr))
     ALet bound rhs body ->
       ALet bound rhs
-        (convIfTest thenBody elseBody body)
+        (convIfTest thenExpr elseExpr body)
     AIf test thenBody' elseBody' ->
       AIf test
-        (convIfTest thenBody elseBody thenBody')
-        (convIfTest thenBody elseBody elseBody')
+        (convIfTest thenExpr elseExpr thenBody')
+        (convIfTest thenExpr elseExpr elseBody')

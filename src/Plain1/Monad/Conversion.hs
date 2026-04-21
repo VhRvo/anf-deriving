@@ -9,12 +9,12 @@ import Control.Monad.State.Strict
 import Expr
 import Plain1.AExpr
 
-newtype Conv a = Conv { runConv :: State Int a }
+newtype Conv a = Conv { unConv :: State Int a }
     deriving (Functor, Applicative, Monad)
     deriving (MonadState Int)
 
-genNewVar :: Conv Text
-genNewVar = do
+genFreshName :: Conv Text
+genFreshName = do
     n <- get
     Conv $ put (n + 1)
     pure $ pack ("$" ++ show n)
@@ -30,121 +30,121 @@ conv expr =
             body' <- conv body
             pure $ AComp (CAtom (ALam bound body'))
         EApp fun arg -> do
-            aFun <- conv fun
-            convAppFun arg aFun
+            funAExpr <- conv fun
+            convAppFun arg funAExpr
         EAdd lhs rhs -> do
-            aLhs <- conv lhs
-            convAddLhs rhs aLhs
+            lhsAExpr <- conv lhs
+            convAddLhs rhs lhsAExpr
         ELet bound rhs body -> do
-            aRhs <- conv rhs
-            convLetRhs bound body aRhs
+            rhsAExpr <- conv rhs
+            convLetRhs bound body rhsAExpr
         EIf test thenBody elseBody -> do
-            aTest <- conv test
-            convIfTest thenBody elseBody aTest
+            testAExpr <- conv test
+            convIfTest thenBody elseBody testAExpr
 
 convAppFun :: Expr -> AExpr -> Conv AExpr
-convAppFun arg aFun =
-    case aFun of
-        AComp (CAtom atomFun) -> do
-            aArg <- conv arg
-            convAppArg atomFun aArg
+convAppFun argExpr funAExpr =
+    case funAExpr of
+        AComp (CAtom funAtom) -> do
+            argAExpr <- conv argExpr
+            convAppArg funAtom argAExpr
         AComp comp -> do
-            var <- genNewVar
-            aArg <- conv arg
-            rest <- convAppArg (AVar var) aArg
-            pure $ ALet var comp rest
+            freshName <- genFreshName
+            argAExpr <- conv argExpr
+            bodyAExpr <- convAppArg (AVar freshName) argAExpr
+            pure $ ALet freshName comp bodyAExpr
         ALet bound comp body -> do
-            body' <- convAppFun arg body
+            body' <- convAppFun argExpr body
             pure $ ALet bound comp body'
         AIf test thenBody elseBody -> do
-            thenBody' <- convAppFun arg thenBody
-            elseBody' <- convAppFun arg elseBody
+            thenBody' <- convAppFun argExpr thenBody
+            elseBody' <- convAppFun argExpr elseBody
             pure $ AIf test thenBody' elseBody'
 
 convAppArg :: Atom -> AExpr -> Conv AExpr
-convAppArg funAtom aArg =
-    case aArg of
+convAppArg funAtom argAExpr =
+    case argAExpr of
         AComp (CAtom argAtom) ->
             pure $ AComp (CApp funAtom argAtom)
         AComp comp -> do
-            var <- genNewVar
-            pure $ ALet var comp (AComp (CApp funAtom (AVar var)))
-        ALet var comp body -> do
+            freshName <- genFreshName
+            pure $ ALet freshName comp (AComp (CApp funAtom (AVar freshName)))
+        ALet freshName comp body -> do
             body' <- convAppArg funAtom body
-            pure $ ALet var comp body'
+            pure $ ALet freshName comp body'
         AIf test thenBody elseBody -> do
             thenBody' <- convAppArg funAtom thenBody
             elseBody' <- convAppArg funAtom elseBody
             pure $ AIf test thenBody' elseBody'
 
 convAddLhs :: Expr -> AExpr -> Conv AExpr
-convAddLhs rhs aLhs =
-    case aLhs of
+convAddLhs rhsExpr lhsAExpr =
+    case lhsAExpr of
         AComp (CAtom lhsAtom) -> do
-            aRhs <- conv rhs
-            convAddRhs lhsAtom aRhs
+            rhsAExpr <- conv rhsExpr
+            convAddRhs lhsAtom rhsAExpr
         AComp comp -> do
-            var <- genNewVar
-            aRhs <- conv rhs
-            rest <- convAddRhs (AVar var) aRhs
-            pure $ ALet var comp rest
+            freshName <- genFreshName
+            rhsAExpr <- conv rhsExpr
+            bodyAExpr <- convAddRhs (AVar freshName) rhsAExpr
+            pure $ ALet freshName comp bodyAExpr
         ALet bound comp body -> do
-            body' <- convAddLhs rhs body
+            body' <- convAddLhs rhsExpr body
             pure $ ALet bound comp body'
         AIf test thenBody elseBody -> do
-            thenBody' <- convAddLhs rhs thenBody
-            elseBody' <- convAddLhs rhs elseBody
+            thenBody' <- convAddLhs rhsExpr thenBody
+            elseBody' <- convAddLhs rhsExpr elseBody
             pure $ AIf test thenBody' elseBody'
 
 convAddRhs :: Atom -> AExpr -> Conv AExpr
-convAddRhs atomLhs aRhs =
-    case aRhs of
+convAddRhs lhsAtom rhsAExpr =
+    case rhsAExpr of
         AComp (CAtom rhsAtom) ->
-            pure $ AComp (CAdd atomLhs rhsAtom)
+            pure $ AComp (CAdd lhsAtom rhsAtom)
         AComp comp -> do
-            var <- genNewVar
-            pure $ ALet var comp (AComp (CAdd atomLhs (AVar var)))
+            freshName <- genFreshName
+            pure $ ALet freshName comp (AComp (CAdd lhsAtom (AVar freshName)))
         ALet bound comp body -> do
-            body' <- convAddRhs atomLhs body
+            body' <- convAddRhs lhsAtom body
             pure $ ALet bound comp body'
         AIf test thenBody elseBody -> do
-            thenBody' <- convAddRhs atomLhs thenBody
-            elseBody' <- convAddRhs atomLhs elseBody
+            thenBody' <- convAddRhs lhsAtom thenBody
+            elseBody' <- convAddRhs lhsAtom elseBody
             pure $ AIf test thenBody' elseBody'
 
 convLetRhs :: Text -> Expr -> AExpr -> Conv AExpr
-convLetRhs bound body aRhs =
-    case aRhs of
+convLetRhs bound bodyExpr rhsAExpr =
+    case rhsAExpr of
         AComp comp -> do
-            body' <- conv body
+            body' <- conv bodyExpr
             pure $ ALet bound comp body'
         ALet bound' rhs' body' -> do
-            rest <- convLetRhs bound body body'
+            rest <- convLetRhs bound bodyExpr body'
             pure $ ALet bound' rhs' rest
         AIf test thenBody elseBody -> do
-            thenBody' <- convLetRhs bound body thenBody
-            elseBody' <- convLetRhs bound body elseBody
+            thenBody' <- convLetRhs bound bodyExpr thenBody
+            elseBody' <- convLetRhs bound bodyExpr elseBody
             pure $ AIf test thenBody' elseBody'
 
 convIfTest :: Expr -> Expr -> AExpr -> Conv AExpr
-convIfTest thenBody elseBody aTest =
-    case aTest of
-        AComp (CAtom test) -> do
-            then' <- conv thenBody
-            else' <- conv elseBody
-            pure $ AIf test then' else'
+convIfTest thenExpr elseExpr testAExpr =
+    case testAExpr of
+        AComp (CAtom testAtom) -> do
+            thenAExpr <- conv thenExpr
+            elseAExpr <- conv elseExpr
+            pure $ AIf testAtom thenAExpr elseAExpr
         AComp comp -> do
-            var <- genNewVar
-            then' <- conv thenBody
-            else' <- conv elseBody
-            pure $ ALet var comp (AIf (AVar var) then' else')
+            freshName <- genFreshName
+            thenAExpr <- conv thenExpr
+            elseAExpr <- conv elseExpr
+            pure $ ALet freshName comp (AIf (AVar freshName) thenAExpr elseAExpr)
         ALet bound rhs body -> do
-            body' <- convIfTest thenBody elseBody body
+            body' <- convIfTest thenExpr elseExpr body
             pure $ ALet bound rhs body'
         AIf test thenBody' elseBody' -> do
-            then' <- convIfTest thenBody elseBody thenBody'
-            else' <- convIfTest thenBody elseBody elseBody'
-            pure $ AIf test then' else'
+            thenAExpr <- convIfTest thenExpr elseExpr thenBody'
+            elseAExpr <- convIfTest thenExpr elseExpr elseBody'
+            pure $ AIf test thenAExpr elseAExpr
 
-runConv' :: Expr -> AExpr
-runConv' expr = evalState (runConv (conv expr)) 0
+runConv :: Expr -> AExpr
+runConv expr = evalState (unConv (conv expr)) 0
