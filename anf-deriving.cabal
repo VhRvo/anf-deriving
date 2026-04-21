@@ -68,6 +68,7 @@ library
       , Plain1.Conversion
       , Plain1.Context.Conversion
       , Plain1.Frame.Conversion
+      , Plain1.Frame.ContConversion
       , Plain1.Monad.Conversion
 
     -- LANGUAGE extensions used by modules in this package.
