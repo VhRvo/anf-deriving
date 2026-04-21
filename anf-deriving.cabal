@@ -67,6 +67,7 @@ library
       , Plain1.AExpr
       , Plain1.Conversion
       , Plain1.Conversion2.Step1
+      , Plain1.Conversion2.Step2
       , Plain1.Context.Conversion
       , Plain1.Frame.Conversion
       , Plain1.Frame.ContConversion
