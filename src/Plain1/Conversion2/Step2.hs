@@ -3,16 +3,38 @@
 
 module Plain1.Conversion2.Step2 where
 
-import Data.Text (Text)
 import Expr
 import Plain1.AExpr
-import Plain1.Conversion2.Step1 (Frame, applyFrame, conv, genFreshName, reifyComp)
+import Plain1.Conversion2.Step1 (Frame, applyFrame, genFreshName, reifyComp)
 
--- composition of applyFrame is associative
-associative :: Frame -> Frame -> AExpr -> Bool
--- associative k1 k2 aExpr = applyFrame k2 (applyFrame k1 aExpr) == applyFrame (\result -> applyFrame k2 (k1 result)) aExpr
-associative k1 k2 aExpr = applyFrame k2 (applyFrame k1 aExpr) == applyFrame (applyFrame k2 . k1) aExpr
-associative k1 k2 aExpr =
+refl :: a -> Bool
+refl _ = True
+
+-- applyFrameIdentity states that AComp is the identity frame for applyFrame.
+applyFrameIdentity :: AExpr -> Bool
+-- applyFrameIdentity aExpr = applyFrame AComp aExpr == aExpr
+applyFrameIdentity aExpr =
+  case aExpr of
+    AComp comp ->
+      -- applyFrame AComp (AComp comp) == AComp comp
+      -- AComp comp == AComp comp
+      refl (AComp comp)
+    ALet bound comp bodyAExpr ->
+      -- applyFrame AComp (ALet bound comp bodyAExpr) == ALet bound comp bodyAExpr
+      -- ALet bound comp (applyFrame AComp bodyAExpr) == ALet bound comp bodyAExpr
+      -- ALet bound comp bodyAExpr == ALet bound comp bodyAExpr
+      refl (ALet bound comp bodyAExpr)
+    AIf testAtom thenAExpr elseAExpr ->
+      -- applyFrame AComp (AIf testAtom thenAExpr elseAExpr) == AIf testAtom thenAExpr elseAExpr
+      -- AIf testAtom (applyFrame AComp thenAExpr) (applyFrame AComp elseAExpr) == AIf testAtom thenAExpr elseAExpr
+      -- AIf testAtom thenAExpr elseAExpr == AIf testAtom thenAExpr elseAExpr
+      refl (AIf testAtom thenAExpr elseAExpr)
+
+-- applyFrameAssociativity states that sequencing two frame applications is
+-- the same as composing their underlying frame functions.
+applyFrameAssociativity :: Frame -> Frame -> AExpr -> Bool
+-- applyFrameAssociativity k1 k2 aExpr = applyFrame k2 (applyFrame k1 aExpr) == applyFrame (\result -> applyFrame k2 (k1 result)) aExpr
+applyFrameAssociativity k1 k2 aExpr =
   case aExpr of
     AComp comp ->
       -- applyFrame k2 (applyFrame k1 (AComp comp)) == applyFrame (\result -> applyFrame k2 (k1 result)) (AComp comp)
@@ -42,51 +64,57 @@ associative k1 k2 aExpr =
             (applyFrame (\result -> applyFrame k2 (k1 result)) thenAExpr)
             (applyFrame (\result -> applyFrame k2 (k1 result)) elseAExpr)
         )
-  where
-    refl :: a -> Bool
-    refl _ = True
 
-applyAfterReify :: Frame -> (Atom -> AExpr) -> Comp -> Bool
-applyAfterReify frame k comp = applyFrame frame (reifyComp k comp) == reifyComp (applyFrame frame . k) comp
-applyAfterReify frame k comp =
+-- reifyCompNaturality states that applyFrame can be pushed through reifyComp
+-- by postcomposing the builder with the surrounding frame.
+reifyCompNaturality :: Frame -> (Atom -> AExpr) -> Comp -> Bool
+-- reifyCompNaturality frame k comp = applyFrame frame (reifyComp k comp) == reifyComp (applyFrame frame . k) comp
+reifyCompNaturality frame k comp =
   case comp of
     CAtom atom ->
       -- applyFrame frame (reifyComp k (CAtom atom)) == reifyComp (applyFrame frame . k) (CAtom atom)
       -- applyFrame frame (k atom) == applyFrame frame (k atom)
       refl (applyFrame frame (k atom))
-    comp ->
-      -- applyFrame frame (reifyComp k comp) == reifyComp (applyFrame frame . k) comp
+    nonAtomComp ->
+      -- applyFrame frame (reifyComp k nonAtomComp) == reifyComp (applyFrame frame . k) nonAtomComp
 
       -- applyFrame
       --   frame
       --   ( let freshName = genFreshName
-      --      in ALet freshName comp (k (AVar freshName))
+      --      in ALet freshName nonAtomComp (k (AVar freshName))
       --   )
       --   == ( let freshName = genFreshName
-      --         in ALet freshName comp (applyFrame frame (k (AVar freshName)))
+      --         in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
       --      )
 
       -- ( let freshName = genFreshName
-      --    in applyFrame frame (ALet freshName comp (k (AVar freshName)))
+      --    in applyFrame frame (ALet freshName nonAtomComp (k (AVar freshName)))
       -- )
       --   == ( let freshName = genFreshName
-      --         in ALet freshName comp (applyFrame frame (k (AVar freshName)))
+      --         in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
       --      )
 
       -- ( let freshName = genFreshName
-      --    in ALet freshName comp (applyFrame frame (k (AVar freshName)))
+      --    in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
       -- )
       --   == ( let freshName = genFreshName
-      --         in ALet freshName comp (applyFrame frame (k (AVar freshName)))
+      --         in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
       --      )
 
       refl
         ( let freshName = genFreshName
-           in ALet freshName comp (applyFrame frame (k (AVar freshName)))
+           in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
         )
-  where
-    refl :: a -> Bool
-    refl _ = True
+
+-- convKSpecialization states that convK recovers conv when the final
+-- continuation is the identity frame AComp.
+convKSpecialization :: Expr -> Bool
+-- convKSpecialization expr = conv expr == convK expr AComp
+convKSpecialization expr =
+  -- conv expr == convK expr AComp
+  -- applyFrame AComp (conv expr) == convK expr AComp
+  -- convK expr AComp == convK expr AComp
+  refl (convK expr AComp)
 
 convK :: Expr -> (Comp -> AExpr) -> AExpr
 -- convK expr k = applyFrame k (conv expr)
@@ -103,7 +131,9 @@ convK expr k =
     ELam bound body ->
       -- applyFrame k (conv (ELam bound body))
       -- applyFrame k (AComp (CAtom (ALam bound (conv body))))
-      k (CAtom (ALam bound (conv body)))
+      -- applyFrame k (AComp (CAtom (ALam bound (convK body AComp))))
+      -- k (CAtom (ALam bound (convK body AComp)))
+      k (CAtom (ALam bound (convK body AComp)))
     EApp funExpr argExpr ->
       -- applyFrame k (conv (EApp funExpr argExpr))
 
