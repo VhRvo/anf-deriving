@@ -81,24 +81,24 @@ plugComp context comp =
     [] ->
       AComp comp
     FrameAppFun argExpr : restContext ->
-      reifyComp comp $ \funAtom ->
+      reifyWith comp $ \funAtom ->
         convUnder (FrameAppArg funAtom : restContext) argExpr
     FrameAppArg funAtom : restContext ->
-      reifyComp comp $ \argAtom ->
+      reifyWith comp $ \argAtom ->
         plugComp restContext (CApp funAtom argAtom)
     FrameAddLhs rhsExpr : restContext ->
-      reifyComp comp $ \lhsAtom ->
+      reifyWith comp $ \lhsAtom ->
         convUnder (FrameAddRhs lhsAtom : restContext) rhsExpr
     FrameAddRhs lhsAtom : restContext ->
-      reifyComp comp $ \rhsAtom ->
+      reifyWith comp $ \rhsAtom ->
         plugComp restContext (CAdd lhsAtom rhsAtom)
     FrameLet bound bodyExpr : restContext ->
       ALet bound comp (convUnder restContext bodyExpr)
     FrameIfTest thenExpr elseExpr : restContext ->
-      reifyComp comp $ \testAtom ->
+      reifyWith comp $ \testAtom ->
         AIf testAtom (convUnder restContext thenExpr) (convUnder restContext elseExpr)
 
-reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
-reifyComp comp build =
+reifyWith :: Comp -> (Atom -> AExpr) -> AExpr
+reifyWith comp build =
   let freshName = genFreshName
    in ALet freshName comp (build (AVar freshName))

@@ -51,28 +51,28 @@ applyFrameToComp :: Frame -> Comp -> AExpr
 applyFrameToComp frame comp =
   case frame of
     FrameAppFun argExpr ->
-      reifyComp comp $ \funAtom ->
+      reifyWith comp $ \funAtom ->
         applyFrame (FrameAppArg funAtom) (conv argExpr)
     FrameAppArg funAtom ->
-      reifyComp comp $ \argAtom ->
+      reifyWith comp $ \argAtom ->
         AComp (CApp funAtom argAtom)
     FrameAddLhs rhsExpr ->
-      reifyComp comp $ \lhsAtom ->
+      reifyWith comp $ \lhsAtom ->
         applyFrame (FrameAddRhs lhsAtom) (conv rhsExpr)
     FrameAddRhs lhsAtom ->
-      reifyComp comp $ \rhsAtom ->
+      reifyWith comp $ \rhsAtom ->
         AComp (CAdd lhsAtom rhsAtom)
     FrameLet bound bodyExpr ->
       ALet bound comp (conv bodyExpr)
     FrameIfTest thenExpr elseExpr ->
-      reifyComp comp $ \testAtom ->
+      reifyWith comp $ \testAtom ->
         AIf testAtom (conv thenExpr) (conv elseExpr)
 
--- Reify a comp as an atom by let-binding it to a fresh name before handing
--- that atom to the surrounding builder.
-reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
-reifyComp (CAtom atom) build =
+-- `reifyWith` turns a `Comp` back into something an `Atom -> AExpr` builder
+-- can consume directly. Non-atomic comps are let-bound to a fresh name first.
+reifyWith :: Comp -> (Atom -> AExpr) -> AExpr
+reifyWith (CAtom atom) build =
   build atom
-reifyComp comp build =
+reifyWith comp build =
   let freshName = genFreshName
    in ALet freshName comp (build (AVar freshName))

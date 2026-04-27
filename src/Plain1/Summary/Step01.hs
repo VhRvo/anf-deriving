@@ -1,31 +1,29 @@
-module Plain1.Conversion where
+module Plain1.Summary.Step01 where
 
 import Data.Text (Text)
 import Expr
-import Plain1.AExpr
+import Plain1.Summary.AExpr
 
--- This module keeps the direct helper-by-helper presentation of the
--- conversion. Plain1.Context.Conversion preserves the same control flow by
--- turning each "what to do next" helper entry into an explicit context frame.
-
-genFreshName :: Text
-genFreshName = undefined
-
--- conv is the direct, helper-by-helper specification of the ANF conversion.
+-- `conv` is the direct, helper-by-helper specification of the ANF conversion.
 -- It is intended to be the trusted reference presentation for the later
 -- context-based and frame-based reformulations.
 --
--- Operationally, the conversion first translates the current subexpression,
--- then follows the partial AExpr obtained so far until it reaches the
--- innermost relevant Comp. That Comp determines how the remaining
--- subexpressions should be translated and reassembled into the surrounding
--- AExpr. The helper functions make that step-by-step process explicit, rather
--- than treating the result as an arbitrary tree traversal.
---
 -- The target language fixes a left-to-right call-by-value evaluation order and
--- enforces the ANF shape invariants encoded by AExpr: applications, additions,
--- and condition tests consume atoms, while intermediate computations are
--- sequenced explicitly through AComp, ALet, and AIf.
+-- enforces the ANF shape invariants encoded by `AExpr`: applications,
+-- additions, and condition tests consume atoms, while intermediate
+-- computations are sequenced explicitly through `AComp`, `ALet`, and `AIf`.
+--
+-- These invariants directly determine the shape of the simple conversion
+-- algorithm. Once a subexpression has been translated to a partial `AExpr`,
+-- the conversion cannot continue from an arbitrary subtree. It must follow
+-- that partial `AExpr` until it reaches the innermost relevant `Comp`,
+-- because only that position can legally supply the atom or computation that
+-- the remaining source-level work is allowed to consume.
+--
+-- The helper functions make this discipline explicit: they preserve the
+-- `AExpr` structure that has already been fixed, continue at the unique
+-- position where the next step is semantically allowed by the ANF invariants,
+-- and then reassemble the result into the surrounding `AExpr`.
 conv :: Expr -> AExpr
 conv expr =
   case expr of
@@ -137,20 +135,20 @@ convLetRhs bound bodyExpr rhsAExpr =
         (convLetRhs bound bodyExpr elseBody)
 
 convIfTest :: Expr -> Expr -> AExpr -> AExpr
-convIfTest thenExpr elseExpr testAExpr =
+convIfTest thenBody elseBody testAExpr =
   case testAExpr of
     AComp (CAtom testAtom) ->
-      AIf testAtom (conv thenExpr) (conv elseExpr)
+      AIf testAtom (conv thenBody) (conv elseBody)
     AComp comp ->
       let freshName = genFreshName
-       in ALet freshName comp (AIf (AVar freshName) (conv thenExpr) (conv elseExpr))
+       in ALet freshName comp (AIf (AVar freshName) (conv thenBody) (conv elseBody))
     ALet bound rhs body ->
       ALet
         bound
         rhs
-        (convIfTest thenExpr elseExpr body)
+        (convIfTest thenBody elseBody body)
     AIf test thenBody' elseBody' ->
       AIf
         test
-        (convIfTest thenExpr elseExpr thenBody')
-        (convIfTest thenExpr elseExpr elseBody')
+        (convIfTest thenBody elseBody thenBody')
+        (convIfTest thenBody elseBody elseBody')

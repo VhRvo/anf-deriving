@@ -1,6 +1,6 @@
 {- HLINT ignore "Avoid lambda" -}
 
-module Plain1.Conversion2.Step1 where
+module Plain1.Conversion2.Step01 where
 
 import Data.Text (Text)
 import Expr
@@ -20,9 +20,9 @@ conv expr =
       AComp (CAtom (ALam bound (conv body)))
     EApp funExpr argExpr ->
       applyFrame
-        ( reifyComp $ \funAtom ->
+        ( reifyWith $ \funAtom ->
             applyFrame
-              ( reifyComp $ \argAtom ->
+              ( reifyWith $ \argAtom ->
                   AComp (CApp funAtom argAtom)
               )
               (conv argExpr)
@@ -30,9 +30,9 @@ conv expr =
         (conv funExpr)
     EAdd lhsExpr rhsExpr ->
       applyFrame
-        ( reifyComp $ \lhsAtom ->
+        ( reifyWith $ \lhsAtom ->
             applyFrame
-              ( reifyComp $ \rhsAtom ->
+              ( reifyWith $ \rhsAtom ->
                   AComp (CAdd lhsAtom rhsAtom)
               )
               (conv rhsExpr)
@@ -42,7 +42,7 @@ conv expr =
       applyFrame (\comp -> ALet bound comp (conv bodyExpr)) (conv rhsExpr)
     EIf testExpr thenExpr elseExpr ->
       applyFrame
-        ( reifyComp $ \testAtom ->
+        ( reifyWith $ \testAtom ->
             AIf testAtom (conv thenExpr) (conv elseExpr)
         )
         (conv testExpr)
@@ -65,11 +65,11 @@ applyFrame frame aExpr =
     AIf testAtom thenAExpr elseAExpr ->
       AIf testAtom (applyFrame frame thenAExpr) (applyFrame frame elseAExpr)
 
--- Reify a comp as an atom by let-binding it to a fresh name before handing
--- that atom to the surrounding builder.
-reifyComp :: (Atom -> AExpr) -> Comp -> AExpr
-reifyComp build (CAtom atom) =
+-- `reifyWith` turns a `Comp` back into something an `Atom -> AExpr` builder
+-- can consume directly. Non-atomic comps are let-bound to a fresh name first.
+reifyWith :: (Atom -> AExpr) -> Comp -> AExpr
+reifyWith build (CAtom atom) =
   build atom
-reifyComp build comp =
+reifyWith build comp =
   let freshName = genFreshName
    in ALet freshName comp (build (AVar freshName))

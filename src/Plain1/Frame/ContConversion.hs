@@ -43,7 +43,7 @@ applyFrame :: Frame -> AExpr -> AExpr
 applyFrame frame aExpr =
   case aExpr of
     -- All comps now flow through one path. Whether a frame can consume the
-    -- result immediately or needs a let-bound name is decided by reifyComp,
+    -- result immediately or needs a let-bound name is decided by `reifyWith`,
     -- so applyFrame no longer needs a separate atom-only helper.
     AComp comp ->
       applyFrameToComp frame comp
@@ -56,35 +56,36 @@ applyFrameToComp :: Frame -> Comp -> AExpr
 applyFrameToComp frame comp =
   case frame of
     FrameAppFun argExpr ->
-      reifyComp comp $ \funAtom ->
+      reifyWith comp $ \funAtom ->
         conv argExpr (applyFrame (FrameAppArg funAtom))
     FrameAppArg funAtom ->
-      reifyComp comp $ \argAtom ->
+      reifyWith comp $ \argAtom ->
         AComp (CApp funAtom argAtom)
     FrameAddLhs rhsExpr ->
-      reifyComp comp $ \lhsAtom ->
+      reifyWith comp $ \lhsAtom ->
         conv rhsExpr (applyFrame (FrameAddRhs lhsAtom))
     FrameAddRhs lhsAtom ->
-      reifyComp comp $ \rhsAtom ->
+      reifyWith comp $ \rhsAtom ->
         AComp (CAdd lhsAtom rhsAtom)
     FrameLet bound bodyExpr ->
       conv bodyExpr (ALet bound comp)
     FrameIfTest thenExpr elseExpr ->
-      reifyComp comp $ \testAtom ->
+      reifyWith comp $ \testAtom ->
         conv thenExpr $ \thenAExpr ->
           conv elseExpr $ \elseAExpr ->
             AIf testAtom thenAExpr elseAExpr
 
--- Reify a comp as an atom before handing it to the surrounding builder.
+-- `reifyWith` turns a `Comp` back into something an `Atom -> AExpr` builder
+-- can consume directly.
 --
 -- This is now the single place that decides whether a Comp is already atomic
 -- enough for the pending frame to consume directly. Folding the old
 -- applyFrameToAtom logic into this helper removes a second case split over the
 -- same Atom/Comp distinction and keeps the operational choice local:
--- CAtom reuses the existing atom, while other comps get a fresh let-bound name.
-reifyComp :: Comp -> (Atom -> AExpr) -> AExpr
-reifyComp (CAtom atom) build =
+-- `CAtom` reuses the existing atom, while other comps get a fresh let-bound name.
+reifyWith :: Comp -> (Atom -> AExpr) -> AExpr
+reifyWith (CAtom atom) build =
   build atom
-reifyComp comp build =
+reifyWith comp build =
   let freshName = genFreshName
    in ALet freshName comp (build (AVar freshName))
