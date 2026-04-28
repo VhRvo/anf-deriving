@@ -86,6 +86,19 @@ library
       , Plain1.Summary.Step10
       , Plain1.Summary.Step11
       , Plain1.Summary.Step12
+      , Plain2.AExpr
+      , Plain2.Summary.Step01
+      , Plain2.Summary.Step02
+      , Plain2.Summary.Step03
+      , Plain2.Summary.Step04
+      , Plain2.Summary.Step05
+      , Plain2.Summary.Step06
+      , Plain2.Summary.Step07
+      , Plain2.Summary.Step08
+      , Plain2.Summary.Step09
+      , Plain2.Summary.Step10
+      , Plain2.Summary.Step11
+      , Plain2.Summary.Step12
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
