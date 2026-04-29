@@ -30,50 +30,50 @@ continueWith build aexpr =
     ALet bound term body ->
       ALet bound term (continueWith build body)
 
-directConv :: Expr -> AExpr
-directConv expr =
+conv :: Expr -> AExpr
+conv expr =
   case expr of
     EVar var ->
       ATerm (TAtom (AVar var))
     EInt int ->
       ATerm (TAtom (AInt int))
     ELam bound body ->
-      ATerm (TAtom (ALam bound (directConv body)))
+      ATerm (TAtom (ALam bound (conv body)))
     EApp fun arg ->
       continueWith
         ( reifyWith
             ( \funAtom ->
                 continueWith
                   (reifyWith (\argAtom -> ATerm (TComp (CApp funAtom argAtom))))
-                  (directConv arg)
+                  (conv arg)
             )
         )
-        (directConv fun)
+        (conv fun)
     EAdd lhs rhs ->
       continueWith
         ( reifyWith
             ( \lhsAtom ->
                 continueWith
                   (reifyWith (\rhsAtom -> ATerm (TComp (CAdd lhsAtom rhsAtom))))
-                  (directConv rhs)
+                  (conv rhs)
             )
         )
-        (directConv lhs)
+        (conv lhs)
     ELet bound rhs body ->
       continueWith
-        (\term -> ALet bound term (directConv body))
-        (directConv rhs)
+        (\term -> ALet bound term (conv body))
+        (conv rhs)
     EIf test thenBody elseBody ->
       continueWith
         ( reifyWith
             ( \testAtom ->
-                ATerm (TComp (CIf testAtom (directConv thenBody) (directConv elseBody)))
+                ATerm (TComp (CIf testAtom (conv thenBody) (conv elseBody)))
             )
         )
-        (directConv test)
+        (conv test)
 
-convKDirect :: Expr -> (Term -> AExpr) -> AExpr
-convKDirect expr build = continueWith build (directConv expr)
+convKDef :: Expr -> (Term -> AExpr) -> AExpr
+convKDef expr build = continueWith build (conv expr)
 
 continueWithAssociativity :: (Term -> AExpr) -> (Term -> AExpr) -> AExpr -> Bool
 -- `continueWithAssociativity firstBuild secondBuild aexpr = continueWith secondBuild (continueWith firstBuild aexpr) == continueWith (continueWith secondBuild . firstBuild) aexpr`
@@ -146,15 +146,15 @@ continueWithIdentity aexpr =
         >= (ALet bound term body)
         & qed
 
-convKDirectIdentity :: Expr -> Bool
--- `convKDirectIdentity expr = convKDirect expr ATerm == directConv expr`
-convKDirectIdentity expr =
+convKDefIdentity :: Expr -> Bool
+-- `convKDefIdentity expr = convKDef expr ATerm == conv expr`
+convKDefIdentity expr =
   begin
-    (convKDirect expr ATerm)
-    =< "by unfolding convKDirect"
-    >= (continueWith ATerm (directConv expr))
-    =< "by continueWithIdentity instantiated at directConv expr"
-    >= (directConv expr)
+    (convKDef expr ATerm)
+    =< "by unfolding convKDef"
+    >= (continueWith ATerm (conv expr))
+    =< "by continueWithIdentity instantiated at conv expr"
+    >= (conv expr)
     & qed
 
 -- After the lemmas above, the whole Plain2 derivation can be written directly
@@ -188,6 +188,3 @@ convK (EIf test thenBody elseBody) build =
             build (TComp (CIf testAtom (convK thenBody ATerm) (convK elseBody ATerm)))
         )
     )
-
-conv :: Expr -> AExpr
-conv expr = convK expr ATerm
