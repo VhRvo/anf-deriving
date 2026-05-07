@@ -63,7 +63,8 @@ library
 
     -- Modules included in this library but not exported.
     other-modules:
-        Expr
+        FreshName
+      , Expr
       , EquationalReasoning
       , Plain1.AExpr
       , Plain1.Conversion

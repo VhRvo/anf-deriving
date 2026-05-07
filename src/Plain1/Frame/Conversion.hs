@@ -4,9 +4,6 @@ import Data.Text (Text)
 import Expr
 import Plain1.AExpr
 
-genFreshName :: Text
-genFreshName = undefined
-
 conv :: Expr -> AExpr
 conv expr =
   case expr of
@@ -74,5 +71,5 @@ reifyWith :: Comp -> (Atom -> AExpr) -> AExpr
 reifyWith (CAtom atom) build =
   build atom
 reifyWith comp build =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName comp (build (AVar freshName))

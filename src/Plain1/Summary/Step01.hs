@@ -48,7 +48,7 @@ convAppFun argExpr funAExpr =
     AComp (CAtom funAtom) ->
       convAppArg funAtom (conv argExpr)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (convAppArg (AVar freshName) (conv argExpr))
     ALet bound comp body ->
       ALet
@@ -67,7 +67,7 @@ convAppArg funAtom argAExpr =
     AComp (CAtom argAtom) ->
       AComp (CApp funAtom argAtom)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AComp (CApp funAtom (AVar freshName)))
     ALet freshName comp body ->
       ALet
@@ -86,7 +86,7 @@ convAddLhs rhsExpr lhsAExpr =
     AComp (CAtom lhsAtom) ->
       convAddRhs lhsAtom (conv rhsExpr)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (convAddRhs (AVar freshName) (conv rhsExpr))
     ALet bound comp body ->
       ALet
@@ -105,7 +105,7 @@ convAddRhs lhsAtom rhsAExpr =
     AComp (CAtom rhsAtom) ->
       AComp (CAdd lhsAtom rhsAtom)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AComp (CAdd lhsAtom (AVar freshName)))
     ALet bound comp body ->
       ALet
@@ -140,7 +140,7 @@ convIfTest thenBody elseBody testAExpr =
     AComp (CAtom testAtom) ->
       AIf testAtom (conv thenBody) (conv elseBody)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AIf (AVar freshName) (conv thenBody) (conv elseBody))
     ALet bound rhs body ->
       ALet

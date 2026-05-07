@@ -37,7 +37,7 @@ reifyWith :: (Atom -> AExpr) -> Comp -> AExpr
 reifyWith build (CAtom atom) =
   build atom
 reifyWith build comp =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName comp (build (AVar freshName))
 
 convAppFun :: Expr -> AExpr -> AExpr

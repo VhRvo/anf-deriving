@@ -13,8 +13,8 @@ newtype Conv a = Conv {unConv :: State Int a}
   deriving (Functor, Applicative, Monad)
   deriving (MonadState Int)
 
-genFreshName :: Conv Text
-genFreshName = do
+nextFreshName :: Conv Text
+nextFreshName = do
   n <- get
   Conv $ put (n + 1)
   pure $ pack ("$" ++ show n)
@@ -49,7 +49,7 @@ convAppFun argExpr funAExpr =
       argAExpr <- conv argExpr
       convAppArg funAtom argAExpr
     AComp comp -> do
-      freshName <- genFreshName
+      freshName <- nextFreshName
       argAExpr <- conv argExpr
       bodyAExpr <- convAppArg (AVar freshName) argAExpr
       pure $ ALet freshName comp bodyAExpr
@@ -67,7 +67,7 @@ convAppArg funAtom argAExpr =
     AComp (CAtom argAtom) ->
       pure $ AComp (CApp funAtom argAtom)
     AComp comp -> do
-      freshName <- genFreshName
+      freshName <- nextFreshName
       pure $ ALet freshName comp (AComp (CApp funAtom (AVar freshName)))
     ALet freshName comp body -> do
       body' <- convAppArg funAtom body
@@ -84,7 +84,7 @@ convAddLhs rhsExpr lhsAExpr =
       rhsAExpr <- conv rhsExpr
       convAddRhs lhsAtom rhsAExpr
     AComp comp -> do
-      freshName <- genFreshName
+      freshName <- nextFreshName
       rhsAExpr <- conv rhsExpr
       bodyAExpr <- convAddRhs (AVar freshName) rhsAExpr
       pure $ ALet freshName comp bodyAExpr
@@ -102,7 +102,7 @@ convAddRhs lhsAtom rhsAExpr =
     AComp (CAtom rhsAtom) ->
       pure $ AComp (CAdd lhsAtom rhsAtom)
     AComp comp -> do
-      freshName <- genFreshName
+      freshName <- nextFreshName
       pure $ ALet freshName comp (AComp (CAdd lhsAtom (AVar freshName)))
     ALet bound comp body -> do
       body' <- convAddRhs lhsAtom body
@@ -134,7 +134,7 @@ convIfTest thenExpr elseExpr testAExpr =
       elseAExpr <- conv elseExpr
       pure $ AIf testAtom thenAExpr elseAExpr
     AComp comp -> do
-      freshName <- genFreshName
+      freshName <- nextFreshName
       thenAExpr <- conv thenExpr
       elseAExpr <- conv elseExpr
       pure $ ALet freshName comp (AIf (AVar freshName) thenAExpr elseAExpr)

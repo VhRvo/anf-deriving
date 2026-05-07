@@ -12,9 +12,6 @@ import Plain1.AExpr
 -- Here, the same "what to do next" information is represented explicitly as a
 -- stack of frames.
 
-genFreshName :: Text
-genFreshName = undefined
-
 -- Each constructor corresponds to one direct-style helper entry point from
 -- Plain1.Conversion.
 data Frame
@@ -100,5 +97,5 @@ plugComp context comp =
 
 reifyWith :: Comp -> (Atom -> AExpr) -> AExpr
 reifyWith comp build =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName comp (build (AVar freshName))

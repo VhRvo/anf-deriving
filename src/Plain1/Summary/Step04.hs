@@ -74,7 +74,7 @@ reifyWith :: (Atom -> AExpr) -> Comp -> AExpr
 reifyWith build (CAtom atom) =
   build atom
 reifyWith build comp =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName comp (build (AVar freshName))
 
 -- `continueWith` carries the remaining `Comp -> AExpr` work through a partial

@@ -8,9 +8,6 @@ import Plain1.AExpr
 -- conversion. Plain1.Context.Conversion preserves the same control flow by
 -- turning each "what to do next" helper entry into an explicit context frame.
 
-genFreshName :: Text
-genFreshName = undefined
-
 -- conv is the direct, helper-by-helper specification of the ANF conversion.
 -- It is intended to be the trusted reference presentation for the later
 -- context-based and frame-based reformulations.
@@ -50,7 +47,7 @@ convAppFun argExpr funAExpr =
     AComp (CAtom funAtom) ->
       convAppArg funAtom (conv argExpr)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (convAppArg (AVar freshName) (conv argExpr))
     ALet bound comp body ->
       ALet
@@ -69,7 +66,7 @@ convAppArg funAtom argAExpr =
     AComp (CAtom argAtom) ->
       AComp (CApp funAtom argAtom)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AComp (CApp funAtom (AVar freshName)))
     ALet freshName comp body ->
       ALet
@@ -88,7 +85,7 @@ convAddLhs rhsExpr lhsAExpr =
     AComp (CAtom lhsAtom) ->
       convAddRhs lhsAtom (conv rhsExpr)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (convAddRhs (AVar freshName) (conv rhsExpr))
     ALet bound comp body ->
       ALet
@@ -107,7 +104,7 @@ convAddRhs lhsAtom rhsAExpr =
     AComp (CAtom rhsAtom) ->
       AComp (CAdd lhsAtom rhsAtom)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AComp (CAdd lhsAtom (AVar freshName)))
     ALet bound comp body ->
       ALet
@@ -142,7 +139,7 @@ convIfTest thenExpr elseExpr testAExpr =
     AComp (CAtom testAtom) ->
       AIf testAtom (conv thenExpr) (conv elseExpr)
     AComp comp ->
-      let freshName = genFreshName
+      let freshName = genFreshName ()
        in ALet freshName comp (AIf (AVar freshName) (conv thenExpr) (conv elseExpr))
     ALet bound rhs body ->
       ALet

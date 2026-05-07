@@ -30,11 +30,11 @@ reifyWithNaturality build k comp =
       begin
         (continueWith build (reifyWith k nonAtomComp))
         =< "by unfolding reifyWith"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in continueWith build (ALet freshName nonAtomComp (k (AVar freshName)))
            )
         =< "by unfolding continueWith"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in ALet freshName nonAtomComp (continueWith build (k (AVar freshName)))
            )
         =< "by folding reifyWith"

@@ -17,7 +17,7 @@ reifyWith :: (Atom -> AExpr) -> Term -> AExpr
 reifyWith build (TAtom atom) =
   build atom
 reifyWith build (TComp comp) =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName (TComp comp) (build (AVar freshName))
 
 -- `continueWith` carries a term-level continuation through the let spine of a
@@ -116,11 +116,11 @@ reifyWithNaturality build atomBuild term =
       begin
         (continueWith build (reifyWith atomBuild (TComp comp)))
         =< "by unfolding reifyWith"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in continueWith build (ALet freshName (TComp comp) (atomBuild (AVar freshName)))
            )
         =< "by unfolding continueWith"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in ALet freshName (TComp comp) (continueWith build (atomBuild (AVar freshName)))
            )
         =< "by folding reifyWith"

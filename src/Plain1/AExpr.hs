@@ -1,6 +1,11 @@
-module Plain1.AExpr where
+module Plain1.AExpr
+  ( module Plain1.AExpr,
+    module FreshName,
+  )
+where
 
 import Data.Text (Text)
+import FreshName (genFreshName)
 
 data Atom
   = AVar Text

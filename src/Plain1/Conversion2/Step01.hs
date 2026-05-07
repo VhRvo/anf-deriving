@@ -2,12 +2,8 @@
 
 module Plain1.Conversion2.Step01 where
 
-import Data.Text (Text)
 import Expr
 import Plain1.AExpr
-
-genFreshName :: Text
-genFreshName = undefined
 
 conv :: Expr -> AExpr
 conv expr =
@@ -71,5 +67,5 @@ reifyWith :: (Atom -> AExpr) -> Comp -> AExpr
 reifyWith build (CAtom atom) =
   build atom
 reifyWith build comp =
-  let freshName = genFreshName
+  let freshName = genFreshName ()
    in ALet freshName comp (build (AVar freshName))

@@ -8,7 +8,7 @@ module Plain1.Conversion2.Step02 where
 import EquationalReasoning
 import Expr
 import Plain1.AExpr
-import Plain1.Conversion2.Step01 (Frame, applyFrame, conv, genFreshName, reifyWith)
+import Plain1.Conversion2.Step01 (Frame, applyFrame, conv, reifyWith)
 import Prelude hiding ((>=))
 
 -- {- FOURMOLU_DISABLE -}
@@ -99,11 +99,11 @@ reifyWithNaturality frame k comp =
       begin
         (applyFrame frame (reifyWith k nonAtomComp))
         =< "by unfolding reifyWith"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in applyFrame frame (ALet freshName nonAtomComp (k (AVar freshName)))
            )
         =< "by unfolding applyFrame"
-        >= ( let freshName = genFreshName
+        >= ( let freshName = genFreshName ()
               in ALet freshName nonAtomComp (applyFrame frame (k (AVar freshName)))
            )
         =< "by folding reifyWith"
